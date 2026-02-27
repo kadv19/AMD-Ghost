@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="background_warm">#FAFAF7</color>
+    <color name="text_charcoal">#1A1A2E</color>
+    <color name="accent_purple">#7C3AED</color>
+    <color name="ai_bubble_grey">#F1F1F0</color>
+    <color name="indicator_green">#10B981</color>
+    <color name="text_white">#FFFFFF</color>
+</resources>

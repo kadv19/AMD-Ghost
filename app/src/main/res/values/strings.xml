@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">AI Ghost</string>
+    <string name="status_on_device">On-Device</string>
+    <string name="status_loading">Loading model…</string>
+    <string name="status_copying">Copying model…</string>
+    <string name="status_error_not_found">Error: Model not found</string>
+    <string name="status_offline">Offline</string>
+    <string name="hint_ask_ghost">Ask your ghost...</string>
+    <string name="content_desc_ghost_avatar">Ghost Avatar</string>
+    <string name="content_desc_send">Send Message</string>
+    <string name="thinking_dots">...</string>
+</resources>
