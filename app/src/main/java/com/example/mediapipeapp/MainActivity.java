@@ -8,6 +8,7 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -26,6 +27,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView textViewStatus;
     private EditText editTextPrompt;
     private ImageButton buttonSend;
+    private ImageButton buttonToggleMode;
     private RecyclerView recyclerViewChat;
     private LinearLayout thinkingLayout;
     private TextView thinkingDots;
@@ -40,6 +42,9 @@ public class MainActivity extends AppCompatActivity {
     // RAG components — loaded once at startup
     private GhostRAG ghostRAG;
     private String username = "Ghost";
+
+    // Mode Toggle: false = Chat, true = Extract File
+    private boolean isExtractMode = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
         textViewStatus = findViewById(R.id.textViewStatus);
         editTextPrompt = findViewById(R.id.editTextPrompt);
         buttonSend = findViewById(R.id.buttonSend);
+        buttonToggleMode = findViewById(R.id.buttonToggleMode);
         recyclerViewChat = findViewById(R.id.recyclerViewChat);
         thinkingLayout = findViewById(R.id.thinkingLayout);
         thinkingDots = findViewById(R.id.thinkingDots);
@@ -67,7 +73,8 @@ public class MainActivity extends AppCompatActivity {
         // Load brain + model in parallel sequence
         loadBrainAndModel();
 
-        buttonSend.setOnClickListener(v -> generateResponse());
+        buttonSend.setOnClickListener(v -> handleSendAction());
+        buttonToggleMode.setOnClickListener(v -> toggleMode());
     }
 
     private void setupChat() {
@@ -79,6 +86,54 @@ public class MainActivity extends AppCompatActivity {
         String welcome = "👻 Ghost awakened for " + username + ".\n\nI have your memories loaded. Ask me anything about your old phone's data!";
         messages.add(new ChatMessage(welcome, ChatMessage.Type.AI));
         chatAdapter.notifyItemInserted(0);
+    }
+
+    private void toggleMode() {
+        isExtractMode = !isExtractMode;
+        if (isExtractMode) {
+            editTextPrompt.setHint("Enter file name to retrieve...");
+            buttonToggleMode.setImageResource(android.R.drawable.ic_menu_save);
+            Toast.makeText(this, "Extract File Mode Active", Toast.LENGTH_SHORT).show();
+        } else {
+            editTextPrompt.setHint("Ask your ghost...");
+            buttonToggleMode.setImageResource(android.R.drawable.ic_menu_help);
+            Toast.makeText(this, "Chat Mode Active", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void handleSendAction() {
+        String input = editTextPrompt.getText().toString().trim();
+        if (input.isEmpty()) return;
+
+        if (isExtractMode) {
+            handleFileExtraction(input);
+        } else {
+            generateResponse(input);
+        }
+    }
+
+    private void handleFileExtraction(String fileName) {
+        // Show user message
+        messages.add(new ChatMessage("Retrieve file: " + fileName, ChatMessage.Type.USER));
+        chatAdapter.notifyItemInserted(messages.size() - 1);
+        recyclerViewChat.scrollToPosition(messages.size() - 1);
+        editTextPrompt.setText("");
+
+        // Trigger Alert/Action for file retrieval
+        Toast.makeText(this, "Searching for: " + fileName, Toast.LENGTH_LONG).show();
+
+        // Placeholder for future entity/trigger logic
+        executorService.execute(() -> {
+            try {
+                Thread.sleep(1500); // Simulate processing
+                runOnUiThread(() -> {
+                    String resultMessage = "Ghost has located '" + fileName + "'.\nURL: https://ghost-storage.s3.amazonaws.com/" + fileName;
+                    messages.add(new ChatMessage(resultMessage, ChatMessage.Type.AI));
+                    chatAdapter.notifyItemInserted(messages.size() - 1);
+                    recyclerViewChat.scrollToPosition(messages.size() - 1);
+                });
+            } catch (InterruptedException ignored) {}
+        });
     }
 
     private void loadBrainAndModel() {
@@ -143,9 +198,8 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception ignored) {}
     }
 
-    private void generateResponse() {
-        String userQuestion = editTextPrompt.getText().toString().trim();
-        if (userQuestion.isEmpty() || llmInference == null) return;
+    private void generateResponse(String userQuestion) {
+        if (llmInference == null) return;
 
         // Show user message
         messages.add(new ChatMessage(userQuestion, ChatMessage.Type.USER));

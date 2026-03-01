@@ -39,7 +39,7 @@
                     android:layout_height="28dp"
                     android:layout_gravity="center"
                     android:src="@android:drawable/ic_menu_help"
-                    android:tint="@color/ghost_accent"/>
+                    app:tint="@color/ghost_accent"/>
             </FrameLayout>
 
             <!-- Title and subtitle -->
@@ -143,6 +143,16 @@
         android:background="@color/ghost_bg_deep"
         app:layout_constraintBottom_toBottomOf="parent">
 
+        <ImageButton
+            android:id="@+id/buttonToggleMode"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/ghost_input_bg"
+            android:src="@android:drawable/ic_menu_help"
+            app:tint="@color/ghost_accent"
+            android:contentDescription="Toggle Mode"/>
+
         <EditText
             android:id="@+id/editTextPrompt"
             android:layout_width="0dp"
@@ -167,7 +177,7 @@
             android:layout_height="50dp"
             android:background="@drawable/ghost_button_send"
             android:src="@android:drawable/ic_menu_send"
-            android:tint="@color/black"
+            app:tint="@color/black"
             android:enabled="false"
             android:contentDescription="Send"/>
     </LinearLayout>
