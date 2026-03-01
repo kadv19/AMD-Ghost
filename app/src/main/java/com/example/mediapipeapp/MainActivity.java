@@ -1,5 +1,6 @@
 package com.example.mediapipeapp;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.view.animation.Animation;
@@ -14,15 +15,23 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3Client;
 import com.google.mediapipe.tasks.genai.llminference.LlmInference;
 
 import java.io.File;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final String BUCKET_NAME = "ai-ghost-android";
 
     private TextView textViewStatus;
     private EditText editTextPrompt;
@@ -42,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
     // RAG components — loaded once at startup
     private GhostRAG ghostRAG;
     private String username = "Ghost";
+    private String ghostKey = "";
 
     // Mode Toggle: false = Chat, true = Extract File
     private boolean isExtractMode = false;
@@ -53,10 +63,10 @@ public class MainActivity extends AppCompatActivity {
 
         modelPath = getFilesDir().getAbsolutePath() + "/llm/gemma3-1b-it-int4.task";
 
-        // Get username passed from GhostKeyActivity
-        if (getIntent().hasExtra("username")) {
-            username = getIntent().getStringExtra("username");
-        }
+        // Get credentials from SharedPreferences
+        SharedPreferences prefs = getSharedPreferences("GhostPrefs", MODE_PRIVATE);
+        username = prefs.getString("username", "Ghost");
+        ghostKey = prefs.getString("ghostKey", "");
 
         textViewStatus = findViewById(R.id.textViewStatus);
         editTextPrompt = findViewById(R.id.editTextPrompt);
@@ -122,17 +132,69 @@ public class MainActivity extends AppCompatActivity {
         // Trigger Alert/Action for file retrieval
         Toast.makeText(this, "Searching for: " + fileName, Toast.LENGTH_LONG).show();
 
-        // Placeholder for future entity/trigger logic
         executorService.execute(() -> {
             try {
-                Thread.sleep(1500); // Simulate processing
+                // Initialize S3 client
+                BasicAWSCredentials credentials = new BasicAWSCredentials(
+                        BuildConfig.AWS_ACCESS_KEY,
+                        BuildConfig.AWS_SECRET_KEY
+                );
+                AmazonS3Client s3Client = new AmazonS3Client(credentials);
+                s3Client.setRegion(Region.getRegion(Regions.US_EAST_1));
+
+                // Try multiple potential S3 paths based on user structure
+                String[] potentialPaths = {
+                    "user_" + username + "_" + ghostKey + "/processed/" + fileName,
+                    "user_" + username + "/processed/" + fileName,
+                    "user_" + username + "/raw/pdfs/" + fileName,
+                    "user_" + username + "/raw/" + fileName
+                };
+
+                String finalS3Key = null;
+                boolean exists = false;
+
+                for (String path : potentialPaths) {
+                    try {
+                        s3Client.getObjectMetadata(BUCKET_NAME, path);
+                        finalS3Key = path;
+                        exists = true;
+                        break;
+                    } catch (Exception ignored) {}
+                }
+
+                if (exists) {
+                    // Generate a pre-signed URL valid for 1 hour
+                    Date expiration = new Date();
+                    long expTimeMillis = expiration.getTime();
+                    expTimeMillis += 1000 * 60 * 60; // 1 hour
+                    expiration.setTime(expTimeMillis);
+
+                    URL url = s3Client.generatePresignedUrl(BUCKET_NAME, finalS3Key, expiration);
+                    final String preSignedUrl = url.toString();
+
+                    runOnUiThread(() -> {
+                        String resultMessage = "Ghost has located '" + fileName + "'.\nYou can access it here (valid for 1 hour):\n" + preSignedUrl;
+                        messages.add(new ChatMessage(resultMessage, ChatMessage.Type.AI));
+                        chatAdapter.notifyItemInserted(messages.size() - 1);
+                        recyclerViewChat.scrollToPosition(messages.size() - 1);
+                    });
+                } else {
+                    runOnUiThread(() -> {
+                        String resultMessage = "Ghost could not find a file named '" + fileName + "' in your memories.";
+                        messages.add(new ChatMessage(resultMessage, ChatMessage.Type.AI));
+                        chatAdapter.notifyItemInserted(messages.size() - 1);
+                        recyclerViewChat.scrollToPosition(messages.size() - 1);
+                    });
+                }
+
+            } catch (Exception e) {
+                android.util.Log.e("GHOST", "File extraction failed", e);
                 runOnUiThread(() -> {
-                    String resultMessage = "Ghost has located '" + fileName + "'.\nURL: https://ghost-storage.s3.amazonaws.com/" + fileName;
-                    messages.add(new ChatMessage(resultMessage, ChatMessage.Type.AI));
+                    messages.add(new ChatMessage("Error retrieving file: " + e.getMessage(), ChatMessage.Type.AI));
                     chatAdapter.notifyItemInserted(messages.size() - 1);
                     recyclerViewChat.scrollToPosition(messages.size() - 1);
                 });
-            } catch (InterruptedException ignored) {}
+            }
         });
     }
 
@@ -145,8 +207,8 @@ public class MainActivity extends AppCompatActivity {
                 ghostRAG = new GhostRAG(chunks);
                 android.util.Log.d("GHOST", "RAG ready with " + chunks.size() + " chunks");
             } catch (Exception e) {
-                android.util.Log.e("GHOST", "Model load FAILED: " + e.getMessage(), e);
-                updateStatus("Error: " + e.getMessage());
+                android.util.Log.e("GHOST", "Brain load FAILED: " + e.getMessage(), e);
+                updateStatus("Error loading brain");
             }
 
             // Step 2: Load Gemma model

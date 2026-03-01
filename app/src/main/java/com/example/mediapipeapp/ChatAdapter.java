@@ -1,9 +1,12 @@
 package com.example.mediapipeapp;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.style.StyleSpan;
 import android.graphics.Typeface;
+import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -95,7 +98,20 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (holder instanceof UserViewHolder) {
             ((UserViewHolder) holder).textMessage.setText(message.getText());
         } else if (holder instanceof AiViewHolder) {
-            ((AiViewHolder) holder).textMessage.setText(renderMarkdown(message.getText()));
+            String text = message.getText();
+            ((AiViewHolder) holder).textMessage.setText(renderMarkdown(text));
+            
+            // Check for URLs in AI responses to show the PDF card or make them clickable
+            Matcher matcher = Patterns.WEB_URL.matcher(text);
+            if (matcher.find()) {
+                String url = matcher.group();
+                ((AiViewHolder) holder).itemView.setOnClickListener(v -> {
+                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    v.getContext().startActivity(browserIntent);
+                });
+            } else {
+                ((AiViewHolder) holder).itemView.setOnClickListener(null);
+            }
         } else if (holder instanceof PdfViewHolder) {
             ((PdfViewHolder) holder).pdfName.setText(message.getPdfName());
             ((PdfViewHolder) holder).btnViewPdf.setOnClickListener(v -> {
@@ -108,8 +124,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position,
                                  @NonNull List<Object> payloads) {
         if (!payloads.isEmpty() && holder instanceof AiViewHolder) {
-            ((AiViewHolder) holder).textMessage.setText(
-                    renderMarkdown(messages.get(position).getText()));
+            onBindViewHolder(holder, position); // Reuse logic to handle URL detection
             return;
         }
         onBindViewHolder(holder, position);

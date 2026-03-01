@@ -16,5 +16,6 @@
         android:paddingVertical="10dp"
         android:text="AI message"
         android:textColor="@color/ghost_text_main"
+        android:textIsSelectable="true"
         android:textSize="15sp" />
 </LinearLayout>
