@@ -1,5 +1,9 @@
 package com.example.mediapipeapp;
 
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.StyleSpan;
+import android.graphics.Typeface;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,12 +12,63 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final List<ChatMessage> messages;
 
     public ChatAdapter(List<ChatMessage> messages) {
         this.messages = messages;
+    }
+
+    public void appendToLastMessage(String text) {
+        if (messages.isEmpty()) return;
+        int last = messages.size() - 1;
+        messages.get(last).setText(messages.get(last).getText() + text);
+        notifyItemChanged(last, "APPEND");
+    }
+
+    /**
+     * Simple markdown renderer — handles **bold** and *italic*.
+     * Lives here so no external dependency is needed.
+     */
+    public static CharSequence renderMarkdown(String raw) {
+        if (raw == null || raw.isEmpty()) return "";
+
+        SpannableStringBuilder sb = new SpannableStringBuilder(raw);
+
+        // Bold: **text**
+        Pattern bold = Pattern.compile("\\*\\*(.+?)\\*\\*", Pattern.DOTALL);
+        Matcher bm = bold.matcher(raw);
+        int offset = 0;
+        while (bm.find()) {
+            String inner = bm.group(1);
+            int start = bm.start() - offset;
+            int end = bm.end() - offset;
+            sb.replace(start, end, inner);
+            sb.setSpan(new StyleSpan(Typeface.BOLD), start, start + inner.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            offset += 4; // removed 2x "**"
+        }
+
+        // Italic: *text* (single asterisk, after bold is handled)
+        raw = sb.toString();
+        sb = new SpannableStringBuilder(raw);
+        Pattern italic = Pattern.compile("\\*(.+?)\\*", Pattern.DOTALL);
+        Matcher im = italic.matcher(raw);
+        offset = 0;
+        while (im.find()) {
+            String inner = im.group(1);
+            int start = im.start() - offset;
+            int end = im.end() - offset;
+            sb.replace(start, end, inner);
+            sb.setSpan(new StyleSpan(Typeface.ITALIC), start, start + inner.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            offset += 2; // removed 2x "*"
+        }
+
+        return sb;
     }
 
     @Override
@@ -40,13 +95,24 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (holder instanceof UserViewHolder) {
             ((UserViewHolder) holder).textMessage.setText(message.getText());
         } else if (holder instanceof AiViewHolder) {
-            ((AiViewHolder) holder).textMessage.setText(message.getText());
+            ((AiViewHolder) holder).textMessage.setText(renderMarkdown(message.getText()));
         } else if (holder instanceof PdfViewHolder) {
             ((PdfViewHolder) holder).pdfName.setText(message.getPdfName());
             ((PdfViewHolder) holder).btnViewPdf.setOnClickListener(v -> {
                 // Handle PDF view
             });
         }
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position,
+                                 @NonNull List<Object> payloads) {
+        if (!payloads.isEmpty() && holder instanceof AiViewHolder) {
+            ((AiViewHolder) holder).textMessage.setText(
+                    renderMarkdown(messages.get(position).getText()));
+            return;
+        }
+        onBindViewHolder(holder, position);
     }
 
     @Override

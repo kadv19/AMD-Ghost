@@ -37,12 +37,21 @@ public class MainActivity extends AppCompatActivity {
     private ExecutorService executorService;
     private String modelPath;
 
+    // RAG components — loaded once at startup
+    private GhostRAG ghostRAG;
+    private String username = "Ghost";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         modelPath = getFilesDir().getAbsolutePath() + "/llm/gemma3-1b-it-int4.task";
+
+        // Get username passed from GhostKeyActivity
+        if (getIntent().hasExtra("username")) {
+            username = getIntent().getStringExtra("username");
+        }
 
         textViewStatus = findViewById(R.id.textViewStatus);
         editTextPrompt = findViewById(R.id.editTextPrompt);
@@ -55,7 +64,8 @@ public class MainActivity extends AppCompatActivity {
 
         executorService = Executors.newSingleThreadExecutor();
 
-        loadModel();
+        // Load brain + model in parallel sequence
+        loadBrainAndModel();
 
         buttonSend.setOnClickListener(v -> generateResponse());
     }
@@ -64,14 +74,30 @@ public class MainActivity extends AppCompatActivity {
         chatAdapter = new ChatAdapter(messages);
         recyclerViewChat.setLayoutManager(new LinearLayoutManager(this));
         recyclerViewChat.setAdapter(chatAdapter);
+
+        // Welcome message
+        String welcome = "👻 Ghost awakened for " + username + ".\n\nI have your memories loaded. Ask me anything about your old phone's data!";
+        messages.add(new ChatMessage(welcome, ChatMessage.Type.AI));
+        chatAdapter.notifyItemInserted(0);
     }
 
-    private void loadModel() {
+    private void loadBrainAndModel() {
         executorService.execute(() -> {
+            // Step 1: Load brain.json for RAG
             try {
-                updateStatus("Copying model...");
-                copyModelIfNeeded();
+                updateStatus("Loading memories...");
+                List<BrainLoader.MemoryChunk> chunks = BrainLoader.loadBrain(this);
+                ghostRAG = new GhostRAG(chunks);
+                android.util.Log.d("GHOST", "RAG ready with " + chunks.size() + " chunks");
+            } catch (Exception e) {
+                android.util.Log.e("GHOST", "Model load FAILED: " + e.getMessage(), e);
+                updateStatus("Error: " + e.getMessage());
+            }
+
+            // Step 2: Load Gemma model
+            try {
                 updateStatus("Loading model...");
+                copyModelIfNeeded();
 
                 File modelFile = new File(modelPath);
                 if (!modelFile.exists()) {
@@ -86,7 +112,8 @@ public class MainActivity extends AppCompatActivity {
 
                 llmInference = LlmInference.createFromOptions(MainActivity.this, options);
 
-                updateStatus("On-Device");
+                String statusText = ghostRAG != null ? "On-Device + RAG" : "On-Device";
+                updateStatus(statusText);
                 runOnUiThread(() -> buttonSend.setEnabled(true));
 
             } catch (Exception e) {
@@ -100,9 +127,7 @@ public class MainActivity extends AppCompatActivity {
         if (dest.exists()) return;
 
         File src = new File(getExternalFilesDir(null), "gemma3-1b-it-int4.task");
-        if (!src.exists()) {
-            return;
-        }
+        if (!src.exists()) return;
 
         try {
             dest.getParentFile().mkdirs();
@@ -119,33 +144,44 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void generateResponse() {
-        String prompt = editTextPrompt.getText().toString().trim();
-        if (prompt.isEmpty() || llmInference == null) return;
+        String userQuestion = editTextPrompt.getText().toString().trim();
+        if (userQuestion.isEmpty() || llmInference == null) return;
 
-        // Add User Message
-        messages.add(new ChatMessage(prompt, ChatMessage.Type.USER));
+        // Show user message
+        messages.add(new ChatMessage(userQuestion, ChatMessage.Type.USER));
         chatAdapter.notifyItemInserted(messages.size() - 1);
         recyclerViewChat.scrollToPosition(messages.size() - 1);
         editTextPrompt.setText("");
         buttonSend.setEnabled(false);
 
-        // Show Thinking Animation
         showThinking(true);
 
         executorService.execute(() -> {
             try {
-                // We'll create a placeholder for AI response
+                // Build the prompt — with RAG if brain is loaded, raw if not
+                String prompt;
+                if (ghostRAG != null) {
+                    prompt = ghostRAG.buildRAGPrompt(userQuestion);
+                    android.util.Log.d("GHOST", "RAG prompt built, length: " + prompt.length());
+                } else {
+                    // Fallback: plain prompt without memory context
+                    prompt = "You are an AI Ghost, a digital memory assistant. " +
+                            "Answer this question: " + userQuestion;
+                }
+
+                // Add AI response placeholder
                 runOnUiThread(() -> {
                     messages.add(new ChatMessage("", ChatMessage.Type.AI));
                     chatAdapter.notifyItemInserted(messages.size() - 1);
                 });
 
+                // Stream Gemma's response token by token
                 llmInference.generateResponseAsync(prompt, (partialResult, done) -> {
                     runOnUiThread(() -> {
                         if (thinkingLayout.getVisibility() == View.VISIBLE) {
                             showThinking(false);
                         }
-                        
+
                         ChatMessage lastMsg = messages.get(messages.size() - 1);
                         lastMsg.setText(lastMsg.getText() + partialResult);
                         chatAdapter.notifyItemChanged(messages.size() - 1);
@@ -153,15 +189,10 @@ public class MainActivity extends AppCompatActivity {
 
                         if (done) {
                             buttonSend.setEnabled(true);
-                            // Example: If response contains "PDF", show a PDF card
-                            if (lastMsg.getText().contains(".pdf")) {
-                                messages.add(new ChatMessage("Generated Document", "Report.pdf"));
-                                chatAdapter.notifyItemInserted(messages.size() - 1);
-                                recyclerViewChat.scrollToPosition(messages.size() - 1);
-                            }
                         }
                     });
                 });
+
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     showThinking(false);
@@ -191,11 +222,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (llmInference != null) {
-            llmInference.close();
-        }
-        if (executorService != null) {
-            executorService.shutdown();
-        }
+        if (llmInference != null) llmInference.close();
+        if (executorService != null) executorService.shutdown();
     }
 }

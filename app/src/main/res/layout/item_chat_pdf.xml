@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:gravity="start"
@@ -8,9 +7,10 @@
     android:paddingVertical="8dp">
 
     <androidx.cardview.widget.CardView
+        xmlns:app="http://schemas.android.com/apk/res-auto"
         android:layout_width="240dp"
         android:layout_height="wrap_content"
-        app:cardBackgroundColor="@color/white"
+        app:cardBackgroundColor="@color/ghost_bg_card"
         app:cardCornerRadius="16dp"
         app:cardElevation="2dp">
 
@@ -18,7 +18,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="12dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -30,27 +30,33 @@
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:src="@android:drawable/ic_menu_save"
-                    app:tint="@color/accent_purple" />
+                    app:tint="@color/ghost_accent" />
 
                 <TextView
                     android:id="@+id/pdfName"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
                     android:text="Document.pdf"
-                    android:textColor="@color/text_charcoal"
+                    android:textColor="@color/ghost_text_main"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
             <Button
                 android:id="@+id/btnViewPdf"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
+                style="?android:attr/borderlessButtonStyle"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_height="36dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/ghost_input_bg"
                 android:text="View Document"
-                android:textColor="@color/accent_purple"
-                app:rippleColor="#207C3AED" />
+                android:textAllCaps="false"
+                android:textColor="@color/ghost_accent"
+                android:textSize="12sp" />
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 </LinearLayout>

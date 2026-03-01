@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Ghost Dark Theme Palette -->
+    <color name="ghost_bg_deep">#0A0A0B</color>
+    <color name="ghost_bg_card">#121214</color>
+    <color name="ghost_accent">#00F2FF</color> <!-- Cyber Cyan -->
+    <color name="ghost_accent_glow">#4D00F2FF</color>
+    <color name="ghost_purple">#8B5CF6</color>
+    <color name="ghost_purple_glow">#4D8B5CF6</color>
+
+    <color name="ghost_text_main">#E2E2E2</color>
+    <color name="ghost_text_dim">#8E8E93</color>
+
+    <color name="ghost_user_bubble">#1E1E22</color>
+    <color name="ghost_ai_bubble">#121214</color>
+
+    <!-- Support Colors -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="background_warm">#FAFAF7</color>
-    <color name="text_charcoal">#1A1A2E</color>
-    <color name="accent_purple">#7C3AED</color>
-    <color name="ai_bubble_grey">#F1F1F0</color>
-    <color name="indicator_green">#10B981</color>
-    <color name="text_white">#FFFFFF</color>
 </resources>

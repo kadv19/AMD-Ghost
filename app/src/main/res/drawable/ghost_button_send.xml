@@ -4,6 +4,9 @@
     <item>
         <shape android:shape="oval">
             <solid android:color="@color/ghost_accent" />
+            <size
+                android:width="48dp"
+                android:height="48dp" />
         </shape>
     </item>
 </ripple>

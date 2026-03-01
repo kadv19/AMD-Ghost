@@ -2,12 +2,12 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.MediaPipeApp" parent="Theme.Material3.Light.NoActionBar">
         <!-- Main theme colors -->
-        <item name="colorPrimary">@color/accent_purple</item>
-        <item name="android:windowBackground">@color/background_warm</item>
-        <item name="android:statusBarColor">@color/background_warm</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
-        <item name="android:navigationBarColor">@color/background_warm</item>
-        <item name="android:windowLightNavigationBar" tools:targetApi="o">true</item>
+        <item name="colorPrimary">@color/ghost_accent</item>
+        <item name="android:windowBackground">@color/ghost_bg_deep</item>
+        <item name="android:statusBarColor">@color/ghost_bg_deep</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">@color/ghost_bg_deep</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o">false</item>
     </style>
 
     <style name="Theme.MediaPipeApp" parent="Base.Theme.MediaPipeApp" />
